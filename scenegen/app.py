@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from PIL import Image, ImageOps
 from pydantic import BaseModel
 
-from .config import FAL_STEPS, MODEL_PRESETS, STEPS, SettingsStore, _default_steps
+from .config import COMFY_PROFILES, FAL_STEPS, MODEL_PRESETS, STEPS, SettingsStore, _default_steps
 from .imaging import load
 from .pipeline import Entry, estimate_cost, make_character_variations, run_scene
 from .storage import Found, Person, Placement, Scene, Store, dump, new_id
@@ -97,8 +97,11 @@ def create_app(data_dir: Path | str | None = None, workers: int = 2) -> FastAPI:
 
     @app.get("/api/step-presets")
     def step_presets():
-        return {"comfyui": {k: v.model_dump() for k, v in _default_steps().items()},
-                "fal": {k: v.model_dump() for k, v in FAL_STEPS.items()}}
+        out = {"comfyui": {k: v.model_dump() for k, v in _default_steps().items()},
+               "fal": {k: v.model_dump() for k, v in FAL_STEPS.items()}}
+        for name, steps in COMFY_PROFILES.items():
+            out[f"comfyui_{name}"] = {k: v.model_dump() for k, v in steps.items()}
+        return out
 
     @app.get("/api/comfyui/check")
     def comfyui_check():

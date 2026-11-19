@@ -64,18 +64,31 @@ def _has_placeholder(obj) -> bool:
     return isinstance(obj, str) and bool(PLACEHOLDER.search(obj))
 
 
+# Inputs that may be left unconnected. A node that loses any other linked input is
+# dropped as well, so e.g. LoadImage -> VAEEncode -> ReferenceLatent collapses cleanly.
+OPTIONAL_LINKS = {
+    "TextEncodeQwenImageEditPlus": {"image1", "image2", "image3", "vae"},
+    "ReferenceLatent": {"latent"},
+}
+
+
 def prune_unfilled(wf: dict) -> dict:
-    """Drop nodes that still contain placeholders, and inputs linking to dropped nodes."""
+    """Drop nodes that still contain placeholders, and everything that depended on them."""
     wf = {k: v for k, v in wf.items() if not _has_placeholder(v.get("inputs", {}))}
     changed = True
     while changed:
         changed = False
         for nid, node in list(wf.items()):
             inputs = node.get("inputs", {})
+            optional = OPTIONAL_LINKS.get(node.get("class_type"), set())
             for name, val in list(inputs.items()):
                 if isinstance(val, list) and len(val) == 2 and isinstance(val[0], str) and val[0] not in wf:
-                    del inputs[name]
+                    if name in optional:
+                        del inputs[name]
+                    else:
+                        del wf[nid]
                     changed = True
+                    break
     return wf
 
 
@@ -169,7 +182,12 @@ class ComfyUIProvider(ImageProvider):
     def edit(self, prompt, *, model, image, resolution, refs=None, aspect_ratio=None):
         w, h = dims_for_megapixels(image.width, image.height, MEGAPIXELS.get(resolution, 1.0))
         image = image.resize((w, h), Image.LANCZOS)
-        return self._run("edit", model, {"PROMPT": prompt, "WIDTH": w, "HEIGHT": h}, image, refs or [])
+        small_refs = []
+        for r in refs or []:  # references don't need full resolution; saves VRAM and time
+            if r.width * r.height > 1_000_000:
+                r = r.resize(dims_for_megapixels(r.width, r.height, 1.0), Image.LANCZOS)
+            small_refs.append(r)
+        return self._run("edit", model, {"PROMPT": prompt, "WIDTH": w, "HEIGHT": h}, image, small_refs)
 
     def upscale(self, image, *, model, factor):
         return self._run("upscale", model, {"SCALE": factor, "WIDTH": image.width * factor,

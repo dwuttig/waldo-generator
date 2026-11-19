@@ -9,7 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends git libgl1 libg
 ARG COMFYUI_REF=master
 RUN git clone https://github.com/comfyanonymous/ComfyUI /opt/ComfyUI \
     && cd /opt/ComfyUI && git checkout "$COMFYUI_REF" \
-    && pip install -r requirements.txt
+    && pip install -r requirements.txt \
+    && git clone https://github.com/city96/ComfyUI-GGUF /opt/ComfyUI/custom_nodes/ComfyUI-GGUF \
+    && pip install -r /opt/ComfyUI/custom_nodes/ComfyUI-GGUF/requirements.txt
 
 WORKDIR /opt/ComfyUI
 EXPOSE 8188

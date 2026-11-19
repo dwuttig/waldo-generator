@@ -227,7 +227,7 @@ def test_bundled_workflows_are_consistent():
             for name, val in node["inputs"].items():
                 if isinstance(val, list):
                     assert val[0] in wf, f"{path.name}: {name} links to missing node {val[0]}"
-                if isinstance(val, str) and val.endswith((".safetensors", ".pth")):
+                if isinstance(val, str) and val.endswith((".safetensors", ".pth", ".gguf")):
                     used.add(val)
     assert used <= files, f"workflows use files not in models.json: {used - files}"
 
@@ -301,3 +301,28 @@ def test_comfy_check_reports_missing_files():
     assert any("qwen_2.5_vl" in f for f in r["missing_files"])
     assert not any("qwen_image_fp8" in f for f in r["missing_files"])
     assert any(n.startswith("VAELoader") for n in r["missing_nodes"])
+
+
+
+def test_lite_edit_prunes_missing_reference_chain():
+    wf = json.loads((WORKFLOW_DIR / "lite_edit.json").read_text())
+    out = prune_unfilled(fill_placeholders(wf, {"PROMPT": "p", "SEED": 1, "IMAGE": "a.png", "REF_1": "b.png"}))
+    assert {"12", "22"}.isdisjoint(out)
+    assert "latent" not in out["25"]["inputs"] and out["25"]["inputs"]["conditioning"] == ["24", 0]
+    assert out["26"]["inputs"]["conditioning"] == ["25", 0] and "30" in out
+    out0 = prune_unfilled(fill_placeholders(wf, {"PROMPT": "p", "SEED": 1, "IMAGE": "a.png"}))
+    assert {"11", "12", "21", "22"}.isdisjoint(out0) and "30" in out0
+
+
+def test_profiles_and_downloader_manifest():
+    from scenegen.config import COMFY_PROFILES
+
+    models = json.loads((REPO / "comfyui" / "models.json").read_text())
+    for name, steps in COMFY_PROFILES.items():
+        needed = set()
+        for st in steps.values():
+            wf = json.loads((WORKFLOW_DIR / (st.model.split(":", 1)[1] + ".json")).read_text())
+            needed |= {v for n in wf.values() for v in n["inputs"].values()
+                       if isinstance(v, str) and v.endswith((".safetensors", ".pth", ".gguf"))}
+        have = {m["file"] for m in models if name in m["profiles"]}
+        assert needed <= have, f"profile {name} misses {needed - have}"

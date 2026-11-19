@@ -34,15 +34,29 @@ class StepConfig(BaseModel):
     price: float = 0.0
 
 
+def _comfy(character, scene, place, detail, upscale="builtin:esrgan_upscale") -> dict[str, StepConfig]:
+    return {
+        "character": StepConfig(provider="comfyui", model=character, resolution="1K", price=0),
+        "scene": StepConfig(provider="comfyui", model=scene, resolution="2K", price=0),
+        "place": StepConfig(provider="comfyui", model=place, resolution="1K", price=0),
+        "detail": StepConfig(provider="comfyui", model=detail, resolution="1K", price=0),
+        "upscale": StepConfig(provider="comfyui", model=upscale, resolution="4K", price=0),
+    }
+
+
+# Local hardware profiles for the bundled ComfyUI workflows.
+COMFY_PROFILES = {
+    # ~8 GB VRAM, 16 GB RAM: FLUX.1 schnell + FLUX.1 Kontext dev as 4-bit GGUF.
+    "lite": _comfy("builtin:lite_edit", "builtin:lite_scene", "builtin:lite_edit", "builtin:lite_refine"),
+    # 16-24 GB VRAM, 64 GB RAM: Qwen-Image + Qwen-Image-Edit-2509 (fp8). Best likeness.
+    "full": _comfy("builtin:qwen_edit", "builtin:qwen_image", "builtin:qwen_edit", "builtin:qwen_refine"),
+}
+
+
 def _default_steps() -> dict[str, StepConfig]:
     """Default: everything on the local ComfyUI with the bundled workflows."""
-    return {
-        "character": StepConfig(provider="comfyui", model="builtin:qwen_edit", resolution="1K", price=0),
-        "scene": StepConfig(provider="comfyui", model="builtin:qwen_image", resolution="2K", price=0),
-        "place": StepConfig(provider="comfyui", model="builtin:qwen_edit", resolution="1K", price=0),
-        "detail": StepConfig(provider="comfyui", model="builtin:qwen_refine", resolution="1K", price=0),
-        "upscale": StepConfig(provider="comfyui", model="builtin:esrgan_upscale", resolution="4K", price=0),
-    }
+    name = os.environ.get("COMFYUI_PROFILE", "lite")
+    return {k: v.model_copy() for k, v in COMFY_PROFILES.get(name, COMFY_PROFILES["lite"]).items()}
 
 
 # Suggested settings when switching a step to fal.ai (prices in USD, Nov 2026).
@@ -68,8 +82,8 @@ MODEL_PRESETS: dict[str, dict[str, list[str]]] = {
         "upscale": [],
     },
     "comfyui": {
-        "generate": ["builtin:qwen_image"],
-        "edit": ["builtin:qwen_edit", "builtin:qwen_refine"],
+        "generate": ["builtin:lite_scene", "builtin:qwen_image"],
+        "edit": ["builtin:lite_edit", "builtin:lite_refine", "builtin:qwen_edit", "builtin:qwen_refine"],
         "upscale": ["builtin:esrgan_upscale"],
     },
     "mock": {"generate": ["mock"], "edit": ["mock"], "upscale": ["mock"]},

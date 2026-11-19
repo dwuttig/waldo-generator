@@ -1,6 +1,7 @@
 """Download the model files the bundled workflows need into a ComfyUI models folder.
 
 Usage: python download_models.py <models-dir> [models.json]
+MODEL_PROFILE selects which set: lite (default, ~8 GB VRAM), full (16-24 GB) or all.
 Skips files that already exist. Set HF_TOKEN if Hugging Face asks for a login.
 """
 
@@ -34,8 +35,12 @@ def download(url: str, dest: Path) -> None:
 def main() -> int:
     root = Path(sys.argv[1] if len(sys.argv) > 1 else "models")
     manifest = Path(sys.argv[2] if len(sys.argv) > 2 else Path(__file__).with_name("models.json"))
+    profile = os.environ.get("MODEL_PROFILE", "lite")
+    print(f"Model profile: {profile}")
     failed = []
     for m in json.loads(manifest.read_text()):
+        if profile != "all" and profile not in m.get("profiles", [profile]):
+            continue
         dest = root / m["dir"] / m["file"]
         if dest.exists() and dest.stat().st_size > 0:
             print(f"✓ {m['dir']}/{m['file']} already present")

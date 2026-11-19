@@ -1,6 +1,6 @@
 # Default setup: the web app plus a local ComfyUI on your NVIDIA GPU.
 #   docker compose up -d --build
-# The first start downloads about 45 GB of models; watch with:
+# The first start downloads the models (about 19 GB for the default lite profile); watch with:
 #   docker compose logs -f models
 #
 # Already running ComfyUI yourself? Set COMFYUI_URL=http://host.docker.internal:8188
@@ -17,6 +17,7 @@ services:
       - "127.0.0.1:8000:8000"
     environment:
       COMFYUI_URL: ${COMFYUI_URL:-http://comfyui:8188}
+      COMFYUI_PROFILE: ${COMFYUI_PROFILE:-lite}
     env_file:
       - path: .env
         required: false
@@ -30,6 +31,8 @@ services:
     command: ["python", "/scripts/download_models.py", "/models", "/scripts/models.json"]
     environment:
       HF_TOKEN: ${HF_TOKEN:-}
+      # lite (~19 GB download, ~8 GB VRAM), full (~45 GB, 16-24 GB VRAM) or all
+      MODEL_PROFILE: ${COMFYUI_PROFILE:-lite}
     volumes:
       - ./comfyui:/scripts:ro
       - comfyui-models:/models

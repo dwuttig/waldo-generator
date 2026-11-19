@@ -27,21 +27,36 @@ It does not copy any existing book or character.
 ## Backends
 
 By default everything runs **locally on ComfyUI** with bundled workflows, so there are no
-per-image costs:
+per-image costs. Pick the hardware profile that fits your PC with `COMFYUI_PROFILE` in
+`.env` (it decides which models are downloaded and which workflows are pre-selected);
+you can also switch in Settings.
 
-| Step | Default workflow | Model |
+**`lite` (default): NVIDIA GPU with about 8 GB VRAM, 16 GB RAM, ~19 GB of models**
+
+| Step | Workflow | Model |
+|---|---|---|
+| Cartoon characters | `builtin:lite_edit` | FLUX.1 Kontext dev, 4-bit GGUF, 20 steps |
+| Base scene | `builtin:lite_scene` | FLUX.1 schnell, 4-bit GGUF, 4 steps |
+| Hide people | `builtin:lite_edit` | FLUX.1 Kontext dev, character images as reference latents |
+| Detail pass | `builtin:lite_refine` | FLUX.1 schnell img2img at denoise 0.3 per tile |
+| Upscale | `builtin:esrgan_upscale` | Real-ESRGAN x2plus |
+
+**`full`: 16 to 24 GB VRAM, 64 GB RAM, ~45 GB of models, best likeness**
+
+| Step | Workflow | Model |
 |---|---|---|
 | Cartoon characters | `builtin:qwen_edit` | Qwen-Image-Edit-2509 (fp8) + 4-step Lightning LoRA |
 | Base scene | `builtin:qwen_image` | Qwen-Image (fp8) + 8-step Lightning LoRA |
-| Hide people | `builtin:qwen_edit` | Qwen-Image-Edit-2509, person's character images as references |
+| Hide people | `builtin:qwen_edit` | Qwen-Image-Edit-2509, character images as references |
 | Detail pass | `builtin:qwen_refine` | Qwen-Image img2img at denoise 0.35 per tile |
 | Upscale | `builtin:esrgan_upscale` | Real-ESRGAN x2plus |
 
-Hardware: an NVIDIA GPU with 16 GB VRAM works with ComfyUI's offloading, 24 GB is
-comfortable, and you need about 64 GB of system RAM for the fp8 models. The models
-need about 45 GB of disk. Resolution tiers for ComfyUI mean pixel budgets: 1K = 1 MP,
-2K = 1.6 MP, 4K = 2.4 MP. Qwen-Image is best at 1 to 2 MP; the detail pass and the
-upscaler produce the final print size.
+The lite profile needs the ComfyUI-GGUF custom node, which the bundled ComfyUI image
+installs. FLUX.1 Kontext dev has a non-commercial licence, which is fine for family use.
+Resolution tiers for ComfyUI mean pixel budgets: 1K = 1 MP, 2K = 1.6 MP, 4K = 2.4 MP.
+The models work best at 1 to 2 MP; the detail pass and the upscaler produce the final
+print size. On a lite-class GPU expect roughly 15 to 30 minutes for a full scene with
+the detail pass; turn the detail pass off in Settings for a quick preview.
 
 Each step can be switched in **Settings** to another provider:
 
@@ -73,7 +88,7 @@ backend and a current NVIDIA driver; check it with
 ```bash
 cp .env.example .env      # optional
 docker compose up -d --build
-docker compose logs -f models    # first start: downloads about 45 GB of models
+docker compose logs -f models    # first start: downloads the models (~19 GB lite, ~45 GB full)
 ```
 
 Open http://localhost:8000, go to **Settings** and click **Check ComfyUI**. It should

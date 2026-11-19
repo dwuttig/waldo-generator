@@ -1,16 +1,14 @@
 [
-  {"dir": "diffusion_models", "file": "qwen_image_fp8_e4m3fn.safetensors",
-   "url": "https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/diffusion_models/qwen_image_fp8_e4m3fn.safetensors"},
-  {"dir": "diffusion_models", "file": "qwen_image_edit_2509_fp8_e4m3fn.safetensors",
-   "url": "https://huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI/resolve/main/split_files/diffusion_models/qwen_image_edit_2509_fp8_e4m3fn.safetensors"},
-  {"dir": "text_encoders", "file": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
-   "url": "https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors"},
-  {"dir": "vae", "file": "qwen_image_vae.safetensors",
-   "url": "https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors"},
-  {"dir": "loras", "file": "Qwen-Image-Lightning-8steps-V2.0.safetensors",
-   "url": "https://huggingface.co/lightx2v/Qwen-Image-Lightning/resolve/main/Qwen-Image-Lightning-8steps-V2.0.safetensors"},
-  {"dir": "loras", "file": "Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors",
-   "url": "https://huggingface.co/lightx2v/Qwen-Image-Lightning/resolve/main/Qwen-Image-Edit-2509/Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors"},
-  {"dir": "upscale_models", "file": "RealESRGAN_x2plus.pth",
-   "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth"}
+  {"dir": "diffusion_models", "file": "qwen_image_fp8_e4m3fn.safetensors", "url": "https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/diffusion_models/qwen_image_fp8_e4m3fn.safetensors", "profiles": ["full"]},
+  {"dir": "diffusion_models", "file": "qwen_image_edit_2509_fp8_e4m3fn.safetensors", "url": "https://huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI/resolve/main/split_files/diffusion_models/qwen_image_edit_2509_fp8_e4m3fn.safetensors", "profiles": ["full"]},
+  {"dir": "text_encoders", "file": "qwen_2.5_vl_7b_fp8_scaled.safetensors", "url": "https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors", "profiles": ["full"]},
+  {"dir": "vae", "file": "qwen_image_vae.safetensors", "url": "https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors", "profiles": ["full"]},
+  {"dir": "loras", "file": "Qwen-Image-Lightning-8steps-V2.0.safetensors", "url": "https://huggingface.co/lightx2v/Qwen-Image-Lightning/resolve/main/Qwen-Image-Lightning-8steps-V2.0.safetensors", "profiles": ["full"]},
+  {"dir": "loras", "file": "Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors", "url": "https://huggingface.co/lightx2v/Qwen-Image-Lightning/resolve/main/Qwen-Image-Edit-2509/Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors", "profiles": ["full"]},
+  {"dir": "upscale_models", "file": "RealESRGAN_x2plus.pth", "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth", "profiles": ["full", "lite"]},
+  {"dir": "unet", "file": "flux1-schnell-Q4_K_S.gguf", "profiles": ["lite"], "url": "https://huggingface.co/city96/FLUX.1-schnell-gguf/resolve/main/flux1-schnell-Q4_K_S.gguf"},
+  {"dir": "unet", "file": "flux1-kontext-dev-Q4_K_M.gguf", "profiles": ["lite"], "url": "https://huggingface.co/QuantStack/FLUX.1-Kontext-dev-GGUF/resolve/main/flux1-kontext-dev-Q4_K_M.gguf"},
+  {"dir": "text_encoders", "file": "t5xxl_fp8_e4m3fn.safetensors", "profiles": ["lite"], "url": "https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp8_e4m3fn.safetensors"},
+  {"dir": "text_encoders", "file": "clip_l.safetensors", "profiles": ["lite"], "url": "https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors"},
+  {"dir": "vae", "file": "ae.safetensors", "profiles": ["lite"], "url": "https://huggingface.co/Comfy-Org/Lumina_Image_2.0_Repackaged/resolve/main/split_files/vae/ae.safetensors"}
 ]

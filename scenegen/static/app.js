@@ -288,6 +288,7 @@ async function loadSettings() {
   for (const k of ["aspect_ratio", "place_patch", "character_variations", "detail_grid", "detail_scale", "upscale_factor"]) f[k].value = s.scene[k];
   f.detail_enabled.checked = s.scene.detail_enabled;
   $("#scene-aspect").value = s.scene.aspect_ratio;
+  $("#comfy-profile").value = (s.steps.scene.model || "").includes("qwen") ? "full" : "lite";
 
   const tbody = $("#steps tbody");
   tbody.innerHTML = "";
@@ -324,6 +325,17 @@ async function loadSettings() {
     tbody.appendChild(tr);
   }
 }
+
+$("#apply-profile").addEventListener("click", () => {
+  const prof = stepPresets["comfyui_" + $("#comfy-profile").value] || {};
+  for (const tr of $$("#steps tbody tr")) {
+    const rec = prof[tr.dataset.step];
+    if (!rec) continue;
+    $(".provider", tr).value = "comfyui";
+    $(".model", tr).value = rec.model; $(".res", tr).value = rec.resolution; $(".price", tr).value = rec.price;
+  }
+  $("#settings-status").textContent = "Profile applied. Click Save settings.";
+});
 
 $("#comfy-check").addEventListener("click", async () => {
   const out = $("#comfy-report");

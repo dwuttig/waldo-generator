@@ -64,6 +64,16 @@
         <h2>ComfyUI (default)</h2>
         <p class="hint">All steps run on your local ComfyUI with the bundled Qwen-Image workflows. With Docker Compose this is the <code>comfyui</code> service; for a ComfyUI already running on this computer use <code>http://host.docker.internal:8188</code>.</p>
         <div class="row"><input name="comfyui_url" placeholder="http://comfyui:8188"><button type="button" id="comfy-check">Check ComfyUI</button></div>
+        <div class="row">
+          <label>Hardware profile
+            <select id="comfy-profile">
+              <option value="lite">Lite: about 8 GB VRAM, 16 GB RAM (FLUX.1 schnell + Kontext, 4-bit)</option>
+              <option value="full">Full: 16 to 24 GB VRAM, 64 GB RAM (Qwen-Image, best likeness)</option>
+            </select>
+          </label>
+          <button type="button" id="apply-profile">Use for all steps</button>
+        </div>
+        <small>The model files for a profile must be downloaded (set <code>COMFYUI_PROFILE</code> in <code>.env</code>, see README).</small>
         <div id="comfy-report" class="muted"></div>
         <details>
           <summary>Fallback workflows for steps whose model is not a workflow</summary>
