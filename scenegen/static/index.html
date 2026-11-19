@@ -61,21 +61,30 @@
   <section id="tab-settings" class="tab">
     <form id="settings-form">
       <div class="card">
-        <h2>API keys</h2>
-        <p class="hint">Stored only in <code>data/settings.json</code> on this computer. Leave blank to keep the current key. Environment variables <code>FAL_KEY</code> and <code>GEMINI_API_KEY</code> also work.</p>
+        <h2>ComfyUI (default)</h2>
+        <p class="hint">All steps run on your local ComfyUI with the bundled Qwen-Image workflows. With Docker Compose this is the <code>comfyui</code> service; for a ComfyUI already running on this computer use <code>http://host.docker.internal:8188</code>.</p>
+        <div class="row"><input name="comfyui_url" placeholder="http://comfyui:8188"><button type="button" id="comfy-check">Check ComfyUI</button></div>
+        <div id="comfy-report" class="muted"></div>
+        <details>
+          <summary>Fallback workflows for steps whose model is not a workflow</summary>
+          <div class="grid3">
+            <label>Generate workflow <input name="wf_generate" placeholder="/path/generate_api.json"></label>
+            <label>Edit workflow <input name="wf_edit" placeholder="/path/edit_api.json"></label>
+            <label>Upscale workflow <input name="wf_upscale" placeholder="/path/upscale_api.json"></label>
+          </div>
+        </details>
+      </div>
+
+      <div class="card">
+        <h2>Cloud API keys (optional)</h2>
+        <p class="hint">Only needed if you switch a step to fal.ai or Google. Stored only in the app's data folder. Leave blank to keep the current key. Environment variables <code>FAL_KEY</code> and <code>GEMINI_API_KEY</code> also work.</p>
         <label>fal.ai key <input type="password" name="fal_api_key" autocomplete="off"></label>
         <label>Google Gemini API key <input type="password" name="google_api_key" autocomplete="off"></label>
-        <label>ComfyUI URL <input name="comfyui_url"></label>
-        <div class="grid3">
-          <label>ComfyUI generate workflow <input name="wf_generate" placeholder="/path/generate_api.json"></label>
-          <label>ComfyUI edit workflow <input name="wf_edit" placeholder="/path/edit_api.json"></label>
-          <label>ComfyUI upscale workflow <input name="wf_upscale" placeholder="/path/upscale_api.json"></label>
-        </div>
       </div>
 
       <div class="card">
         <h2>Provider and model for each step</h2>
-        <p class="hint">Mix and match. "mock" draws placeholders for free, handy to try the app. Prices are only used for the cost preview.</p>
+        <p class="hint">Mix and match. For ComfyUI the model is a workflow (<code>builtin:…</code> or a path to your own API-format JSON). "mock" draws free placeholders to try the app. Prices are only used for the cost preview. Switching a step to fal.ai fills in recommended values; for fal also lower the detail tiles to 3 and scale to 2 to keep costs down.</p>
         <div class="table-wrap"><table id="steps">
           <thead><tr><th>Step</th><th>Provider</th><th>Model</th><th>Resolution</th><th>$ per call</th></tr></thead>
           <tbody></tbody>

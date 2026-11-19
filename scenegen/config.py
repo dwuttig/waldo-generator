@@ -35,13 +35,24 @@ class StepConfig(BaseModel):
 
 
 def _default_steps() -> dict[str, StepConfig]:
+    """Default: everything on the local ComfyUI with the bundled workflows."""
     return {
-        "character": StepConfig(provider="fal", model="fal-ai/nano-banana-pro/edit", resolution="2K", price=0.15),
-        "scene": StepConfig(provider="fal", model="fal-ai/nano-banana-pro", resolution="4K", price=0.30),
-        "place": StepConfig(provider="fal", model="fal-ai/nano-banana-pro/edit", resolution="1K", price=0.15),
-        "detail": StepConfig(provider="fal", model="fal-ai/nano-banana-2/edit", resolution="2K", price=0.12),
-        "upscale": StepConfig(provider="fal", model="fal-ai/esrgan", resolution="4K", price=0.02),
+        "character": StepConfig(provider="comfyui", model="builtin:qwen_edit", resolution="1K", price=0),
+        "scene": StepConfig(provider="comfyui", model="builtin:qwen_image", resolution="2K", price=0),
+        "place": StepConfig(provider="comfyui", model="builtin:qwen_edit", resolution="1K", price=0),
+        "detail": StepConfig(provider="comfyui", model="builtin:qwen_refine", resolution="1K", price=0),
+        "upscale": StepConfig(provider="comfyui", model="builtin:esrgan_upscale", resolution="4K", price=0),
     }
+
+
+# Suggested settings when switching a step to fal.ai (prices in USD, Nov 2026).
+FAL_STEPS = {
+    "character": StepConfig(provider="fal", model="fal-ai/nano-banana-pro/edit", resolution="2K", price=0.15),
+    "scene": StepConfig(provider="fal", model="fal-ai/nano-banana-pro", resolution="4K", price=0.30),
+    "place": StepConfig(provider="fal", model="fal-ai/nano-banana-pro/edit", resolution="1K", price=0.15),
+    "detail": StepConfig(provider="fal", model="fal-ai/nano-banana-2/edit", resolution="2K", price=0.12),
+    "upscale": StepConfig(provider="fal", model="fal-ai/esrgan", resolution="4K", price=0.02),
+}
 
 
 # Suggested models per provider, shown as presets in the settings UI.
@@ -56,7 +67,11 @@ MODEL_PRESETS: dict[str, dict[str, list[str]]] = {
         "edit": ["gemini-3-pro-image-preview", "gemini-3.1-flash-image-preview"],
         "upscale": [],
     },
-    "comfyui": {"generate": [""], "edit": [""], "upscale": [""]},
+    "comfyui": {
+        "generate": ["builtin:qwen_image"],
+        "edit": ["builtin:qwen_edit", "builtin:qwen_refine"],
+        "upscale": ["builtin:esrgan_upscale"],
+    },
     "mock": {"generate": ["mock"], "edit": ["mock"], "upscale": ["mock"]},
 }
 
@@ -67,17 +82,17 @@ class SceneDefaults(BaseModel):
     # of the scene's longer side. Smaller patch = smaller, better hidden person.
     place_patch: float = Field(0.22, ge=0.08, le=0.5)
     detail_enabled: bool = True
-    detail_grid: int = Field(3, ge=1, le=8)   # tiles along the longer side
-    detail_scale: int = Field(2, ge=1, le=4)  # output pixels per base pixel
-    upscale_factor: int = Field(1, ge=1, le=4)  # extra upscale after detail (1 = off)
+    detail_grid: int = Field(5, ge=1, le=8)   # tiles along the longer side
+    detail_scale: int = Field(3, ge=1, le=4)  # output pixels per base pixel
+    upscale_factor: int = Field(2, ge=1, le=4)  # extra upscale after detail (1 = off)
     character_variations: int = Field(4, ge=1, le=8)
 
 
 class Settings(BaseModel):
     fal_api_key: str = ""
     google_api_key: str = ""
-    comfyui_url: str = "http://127.0.0.1:8188"
-    # Paths to ComfyUI workflows (API format JSON) for each operation.
+    comfyui_url: str = Field(default_factory=lambda: os.environ.get("COMFYUI_URL", "http://127.0.0.1:8188"))
+    # Fallback workflows per operation, used when a ComfyUI step's model is not a workflow.
     comfyui_workflows: dict[str, str] = Field(
         default_factory=lambda: {"generate": "", "edit": "", "upscale": ""}
     )

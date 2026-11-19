@@ -270,9 +270,11 @@ const STEP_LABELS = {
 };
 const STEP_KIND = { character: "edit", scene: "generate", place: "edit", detail: "edit", upscale: "upscale" };
 let presets = {};
+let stepPresets = {};
 
 async function loadSettings() {
   presets = await api("/api/presets");
+  stepPresets = await api("/api/step-presets");
   const s = await api("/api/settings");
   const f = $("#settings-form");
   f.fal_api_key.value = ""; f.google_api_key.value = "";
@@ -308,13 +310,41 @@ async function loadSettings() {
     };
     $(".provider", tr).onchange = () => {
       fill();
-      const opts = (presets[$(".provider", tr).value] || {})[STEP_KIND[step]] || [];
-      $(".model", tr).value = opts[0] || "";
+      const prov = $(".provider", tr).value;
+      const rec = (stepPresets[prov] || {})[step];
+      if (rec) {
+        $(".model", tr).value = rec.model; $(".res", tr).value = rec.resolution; $(".price", tr).value = rec.price;
+      } else {
+        const opts = (presets[prov] || {})[STEP_KIND[step]] || [];
+        $(".model", tr).value = opts[0] || "";
+        if (prov === "mock") $(".price", tr).value = 0;
+      }
     };
     fill();
     tbody.appendChild(tr);
   }
 }
+
+$("#comfy-check").addEventListener("click", async () => {
+  const out = $("#comfy-report");
+  out.textContent = "Saving and checking…";
+  $("#settings-form").requestSubmit();
+  await new Promise(r => setTimeout(r, 800));
+  try {
+    const r = await api("/api/comfyui/check");
+    const lines = [];
+    if (!r.reachable) lines.push("✗ " + (r.errors[0] || "Not reachable"));
+    else {
+      lines.push(`✓ Connected: ${r.device} (${r.vram_gb} GB)`);
+      if (r.missing_nodes.length) lines.push("✗ Missing nodes (update ComfyUI): " + r.missing_nodes.join(", "));
+      if (r.missing_files.length) lines.push("✗ Missing model files: " + r.missing_files.join(", "));
+      for (const e of r.errors) lines.push("✗ " + e);
+      if (r.ok) lines.push("✓ All workflows and model files found. Ready to go.");
+    }
+    out.innerHTML = "";
+    for (const l of lines) { const d = document.createElement("div"); d.textContent = l; out.appendChild(d); }
+  } catch (err) { out.textContent = "Error: " + err.message; }
+});
 
 $("#settings-form").addEventListener("submit", async (e) => {
   e.preventDefault();

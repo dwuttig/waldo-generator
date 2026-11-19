@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from PIL import Image, ImageOps
 from pydantic import BaseModel
 
-from .config import MODEL_PRESETS, SettingsStore
+from .config import FAL_STEPS, MODEL_PRESETS, STEPS, SettingsStore, _default_steps
 from .imaging import load
 from .pipeline import Entry, estimate_cost, make_character_variations, run_scene
 from .storage import Found, Person, Placement, Scene, Store, dump, new_id
@@ -94,6 +94,29 @@ def create_app(data_dir: Path | str | None = None, workers: int = 2) -> FastAPI:
     @app.get("/api/presets")
     def presets():
         return MODEL_PRESETS
+
+    @app.get("/api/step-presets")
+    def step_presets():
+        return {"comfyui": {k: v.model_dump() for k, v in _default_steps().items()},
+                "fal": {k: v.model_dump() for k, v in FAL_STEPS.items()}}
+
+    @app.get("/api/comfyui/check")
+    def comfyui_check():
+        from .providers.comfyui import ComfyUIProvider
+
+        s = settings_store.load()
+        refs = []
+        for name in STEPS:
+            st = s.step(name)
+            if st.provider != "comfyui":
+                continue
+            if st.model.startswith("builtin:") or st.model.endswith(".json"):
+                refs.append(st.model)
+            else:
+                op = {"scene": "generate", "upscale": "upscale"}.get(name, "edit")
+                if s.comfyui_workflows.get(op):
+                    refs.append(s.comfyui_workflows[op])
+        return ComfyUIProvider(s.comfyui_url, s.comfyui_workflows).check(refs)
 
     @app.get("/api/estimate")
     def estimate(n: int = 1, aspect_ratio: str | None = None):

@@ -204,3 +204,100 @@ def test_uploaded_assets_used_as_references(tmp_path, monkeypatch):
     assert len(seen[0]) == 3
     # transparency is flattened to white, not black
     assert seen[0][0].getpixel((0, 0)) == (255, 255, 255)
+
+
+# ---------------------------------------------------------------- ComfyUI defaults
+
+import pathlib
+
+from scenegen.providers.comfyui import (WORKFLOW_DIR, ComfyUIProvider, dims_for_megapixels,
+                                        prune_unfilled)
+
+REPO = pathlib.Path(__file__).resolve().parent.parent
+
+
+def test_bundled_workflows_are_consistent():
+    models = json.loads((REPO / "comfyui" / "models.json").read_text())
+    files = {m["file"] for m in models}
+    used = set()
+    for path in WORKFLOW_DIR.glob("*.json"):
+        wf = json.loads(path.read_text())
+        assert any(n["class_type"] == "SaveImage" for n in wf.values()), path.name
+        for node in wf.values():
+            for name, val in node["inputs"].items():
+                if isinstance(val, list):
+                    assert val[0] in wf, f"{path.name}: {name} links to missing node {val[0]}"
+                if isinstance(val, str) and val.endswith((".safetensors", ".pth")):
+                    used.add(val)
+    assert used <= files, f"workflows use files not in models.json: {used - files}"
+
+
+def test_default_settings_use_bundled_comfy_workflows():
+    s = Settings()
+    for name in ("character", "scene", "place", "detail", "upscale"):
+        st = s.step(name)
+        assert st.provider == "comfyui"
+        assert (WORKFLOW_DIR / (st.model.split(":", 1)[1] + ".json")).exists()
+
+
+def test_prune_removes_unused_reference_slots():
+    wf = json.loads((WORKFLOW_DIR / "qwen_edit.json").read_text())
+    out = prune_unfilled(fill_placeholders(wf, {"PROMPT": "p", "SEED": 1, "IMAGE": "a.png", "REF_1": "b.png"}))
+    assert "12" not in out
+    assert "image3" not in out["20"]["inputs"] and out["20"]["inputs"]["image2"] == ["11", 0]
+
+
+def test_dims_for_megapixels():
+    w, h = dims_for_megapixels(3000, 2000, 1.6)
+    assert w % 16 == 0 and h % 16 == 0 and abs(w * h - 1.6e6) < 0.05e6
+
+
+def test_comfy_provider_roundtrip():
+    calls = {"uploads": 0}
+
+    def handler(req: httpx.Request):
+        p = req.url.path
+        if p == "/upload/image":
+            calls["uploads"] += 1
+            return httpx.Response(200, json={"name": f"u{calls['uploads']}.png"})
+        if p == "/prompt":
+            calls["prompt"] = json.loads(req.content)["prompt"]
+            return httpx.Response(200, json={"prompt_id": "abc"})
+        if p == "/history/abc":
+            return httpx.Response(200, json={"abc": {"status": {"completed": True}, "outputs": {
+                "50": {"images": [{"filename": "o.png", "subfolder": "", "type": "output"}]}}}})
+        if p == "/view":
+            return httpx.Response(200, content=png_bytes(size=(96, 96)))
+        return httpx.Response(404)
+
+    prov = ComfyUIProvider("http://comfy:8188", client=httpx.Client(transport=httpx.MockTransport(handler)),
+                           poll_interval=0)
+    img = prov.edit("add Oma", model="builtin:qwen_edit", image=Image.new("RGB", (300, 300)),
+                    refs=[Image.new("RGB", (50, 80))], resolution="1K")
+    assert img.size == (96, 96)
+    wf = calls["prompt"]
+    assert calls["uploads"] == 2
+    assert wf["10"]["inputs"]["image"] == "u1.png" and wf["11"]["inputs"]["image"] == "u2.png"
+    assert "12" not in wf
+    assert wf["20"]["inputs"]["prompt"] == "add Oma"
+    assert isinstance(wf["30"]["inputs"]["seed"], int)
+
+
+def test_comfy_check_reports_missing_files():
+    info = {
+        "UNETLoader": {"input": {"required": {"unet_name": [["qwen_image_fp8_e4m3fn.safetensors"]], "weight_dtype": [["default"]]}}},
+        "CLIPLoader": {"input": {"required": {"clip_name": ["COMBO", {"options": []}], "type": [["qwen_image"]]},
+                                 "optional": {"device": [["default"]]}}},
+    }
+
+    def handler(req: httpx.Request):
+        if req.url.path == "/system_stats":
+            return httpx.Response(200, json={"devices": [{"name": "RTX 4090", "vram_total": 24e9}]})
+        return httpx.Response(200, json=info)
+
+    prov = ComfyUIProvider("http://c", client=httpx.Client(transport=httpx.MockTransport(handler)))
+    r = prov.check(["builtin:qwen_image"])
+    assert r["reachable"] and not r["ok"]
+    assert any("qwen_2.5_vl" in f for f in r["missing_files"])
+    assert not any("qwen_image_fp8" in f for f in r["missing_files"])
+    assert any(n.startswith("VAELoader") for n in r["missing_nodes"])

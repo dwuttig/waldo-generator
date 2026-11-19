@@ -20,52 +20,78 @@ It does not copy any existing book or character.
    - **hides each person** by redrawing only a small square patch around their spot with
      their character sheet as reference, blended back with a soft mask,
    - runs a **tiled detail pass**: the scene is cut into overlapping tiles, each tile is
-     redrawn at higher resolution and the tiles are feathered together (4K becomes about 8K),
-   - optionally **upscales** further,
+     redrawn at higher resolution and the tiles are feathered together,
+   - **upscales** the result (Real-ESRGAN 2x by default, roughly 9300 x 6200 px for 3:2),
    - saves the final PNG/JPG and an **answer key** with every hidden person circled.
 
-## Configurable backends
+## Backends
 
-Every step (characters, base scene, hiding people, detail pass, upscale) has its own
-provider, model, resolution and price in **Settings**, so you can mix them:
+By default everything runs **locally on ComfyUI** with bundled workflows, so there are no
+per-image costs:
+
+| Step | Default workflow | Model |
+|---|---|---|
+| Cartoon characters | `builtin:qwen_edit` | Qwen-Image-Edit-2509 (fp8) + 4-step Lightning LoRA |
+| Base scene | `builtin:qwen_image` | Qwen-Image (fp8) + 8-step Lightning LoRA |
+| Hide people | `builtin:qwen_edit` | Qwen-Image-Edit-2509, person's character images as references |
+| Detail pass | `builtin:qwen_refine` | Qwen-Image img2img at denoise 0.35 per tile |
+| Upscale | `builtin:esrgan_upscale` | Real-ESRGAN x2plus |
+
+Hardware: an NVIDIA GPU with 16 GB VRAM works with ComfyUI's offloading, 24 GB is
+comfortable, and you need about 64 GB of system RAM for the fp8 models. The models
+need about 45 GB of disk. Resolution tiers for ComfyUI mean pixel budgets: 1K = 1 MP,
+2K = 1.6 MP, 4K = 2.4 MP. Qwen-Image is best at 1 to 2 MP; the detail pass and the
+upscaler produce the final print size.
+
+Each step can be switched in **Settings** to another provider:
 
 | Provider | What you need | Notes |
 |---|---|---|
-| `fal` (default) | fal.ai API key | Nano Banana Pro / Nano Banana 2 (best face likeness), FLUX.2, ESRGAN / Clarity upscalers |
+| `comfyui` (default) | Local ComfyUI | Free per image. The model field names a workflow: `builtin:…` or a path to your own API-format JSON |
+| `fal` | fal.ai API key | Nano Banana Pro / 2 (best face likeness), FLUX.2, upscalers. About $0.15 per character, $1 to $3.50 per scene |
 | `google` | Gemini API key | Same Nano Banana models billed by Google; no upscaler (falls back to Lanczos) |
-| `comfyui` | Local ComfyUI + workflows | Free per image; needs a strong GPU (24 GB recommended) and your own workflows, see below |
-| `mock` | nothing | Draws placeholders offline. Use it to try the app without spending money |
+| `mock` | nothing | Draws placeholders offline, to try the app |
 
-Keys go in Settings (saved to `data/settings.json`, never sent anywhere except to the
-provider) or as environment variables `FAL_KEY` / `GEMINI_API_KEY`.
+When you switch a step to fal, the app fills in recommended models and prices. Also lower
+*Detail tiles across* to 3 and *Detail scale* to 2, otherwise the detail pass makes 20
+paid calls.
 
-Rough costs with the defaults on fal (Nov 2026 prices): about $0.15 per character
-variation, and $1 to $3.50 per finished scene depending on detail tiles and number of
-people. The Scenes tab shows an estimate before you generate.
+### Own ComfyUI workflows
 
-### ComfyUI workflows
-
-Export each workflow in API format and put these placeholders into node inputs:
-`{{PROMPT}}`, `{{SEED}}`, `{{WIDTH}}`, `{{HEIGHT}}`, `{{MODEL}}`, `{{SCALE}}`,
-`{{IMAGE}}` (main input image) and `{{REF_1}}`, `{{REF_2}}`… (reference images).
-Set the three workflow paths (generate, edit, upscale) in Settings.
+Export a workflow in API format and use these placeholders in node inputs:
+`{{PROMPT}}`, `{{SEED}}`, `{{WIDTH}}`, `{{HEIGHT}}`, `{{SCALE}}`, `{{IMAGE}}` (main input
+image) and `{{REF_1}}`, `{{REF_2}}`… (reference images). Nodes whose placeholder gets no
+value (for example `{{REF_2}}` when a person has only one character image) are removed
+automatically, along with the links to them. Put the file path in a step's model field.
 
 ## Run it with Docker (recommended)
 
+You need Docker with NVIDIA GPU support. On Windows that is Docker Desktop with the WSL 2
+backend and a current NVIDIA driver; check it with
+`docker run --rm --gpus all nvidia/cuda:12.8.0-base-ubuntu24.04 nvidia-smi`.
+
 ```bash
-cp .env.example .env      # optional: add FAL_KEY / GEMINI_API_KEY / SCENEGEN_PASSWORD
+cp .env.example .env      # optional
 docker compose up -d --build
+docker compose logs -f models    # first start: downloads about 45 GB of models
 ```
 
-Open http://localhost:8000. Photos, characters, scenes and settings live in the
-`scenegen-data` Docker volume, so they survive restarts and image updates.
+Open http://localhost:8000, go to **Settings** and click **Check ComfyUI**. It should
+report your GPU and "All workflows and model files found". ComfyUI's own UI is at
+http://localhost:8188 if you want to look at or tweak the workflows.
 
+Photos, characters, scenes and settings live in the `scenegen-data` volume and models in
+`comfyui-models`, so both survive restarts and updates.
+
+- **ComfyUI already installed on this computer**: set
+  `COMFYUI_URL=http://host.docker.internal:8188` in `.env`, start only the app with
+  `docker compose up -d --build scenegen`, and get the models with
+  `python comfyui/download_models.py <your ComfyUI>/models` (list in `comfyui/models.json`).
 - **Other devices on your network** (phone, tablet): change the port line in
   `docker-compose.yml` to `"8000:8000"` and set `SCENEGEN_PASSWORD` in `.env`, then open
   `http://<your-computer>:8000` and log in as `family` (or `SCENEGEN_USER`).
 - **On the internet**: put it behind a reverse proxy with HTTPS (Caddy, Traefik, nginx) and
-  always set `SCENEGEN_PASSWORD`; generating images spends money on your API key.
-- **Local ComfyUI on the same machine**: use `http://host.docker.internal:8188` as the ComfyUI URL.
+  always set `SCENEGEN_PASSWORD`.
 - **Update**: `git pull && docker compose up -d --build`.
 - **Backup**: `docker run --rm -v waldo-generator_scenegen-data:/data -v "$PWD":/out alpine tar czf /out/backup.tgz -C /data .`
 
@@ -74,8 +100,7 @@ Open http://localhost:8000. Photos, characters, scenes and settings live in the
 ```bash
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e .
-export FAL_KEY=...        # or enter it in Settings
-python -m scenegen        # opens on http://127.0.0.1:8000
+python -m scenegen        # opens on http://127.0.0.1:8000, expects ComfyUI on 127.0.0.1:8188
 ```
 
 Data (photos, characters, scenes) is stored in `./data` (change with `--data` or
@@ -89,6 +114,8 @@ Data (photos, characters, scenes) is stored in `./data` (change with `--data` or
 - More *detail tiles* means sharper backgrounds but more cost; if tiles show seams, try the
   Nano Banana Pro model for the detail step or reduce the tile count.
 - Image models change quickly; model ids in Settings are free text, so you can switch to newer ones.
+- If tiles show visible seams or the detail pass changes faces, lower the denoise in
+  `scenegen/workflows/qwen_refine.json` (node 30) or turn the detail pass off.
 
 ## Development
 

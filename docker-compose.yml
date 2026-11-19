@@ -1,3 +1,11 @@
+# Default setup: the web app plus a local ComfyUI on your NVIDIA GPU.
+#   docker compose up -d --build
+# The first start downloads about 45 GB of models; watch with:
+#   docker compose logs -f models
+#
+# Already running ComfyUI yourself? Set COMFYUI_URL=http://host.docker.internal:8188
+# in .env and start only the app:  docker compose up -d --build scenegen
+
 services:
   scenegen:
     build: .
@@ -7,15 +15,48 @@ services:
       # Only reachable from this computer. To open it to your home network,
       # change to "8000:8000" and set SCENEGEN_PASSWORD in .env.
       - "127.0.0.1:8000:8000"
+    environment:
+      COMFYUI_URL: ${COMFYUI_URL:-http://comfyui:8188}
     env_file:
       - path: .env
         required: false
     volumes:
       - scenegen-data:/data
-    # For a local ComfyUI on the host, set its URL in Settings to
-    # http://host.docker.internal:8188
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  models:
+    image: python:3.12-slim
+    command: ["python", "/scripts/download_models.py", "/models", "/scripts/models.json"]
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes:
+      - ./comfyui:/scripts:ro
+      - comfyui-models:/models
+    restart: "no"
+
+  comfyui:
+    build: ./comfyui
+    image: hidden-family-comfyui:latest
+    restart: unless-stopped
+    depends_on:
+      models:
+        condition: service_completed_successfully
+    ports:
+      # ComfyUI's own UI, handy for tweaking workflows. Local only.
+      - "127.0.0.1:8188:8188"
+    volumes:
+      - comfyui-models:/opt/ComfyUI/models
+      - comfyui-output:/opt/ComfyUI/output
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
 volumes:
   scenegen-data:
+  comfyui-models:
+  comfyui-output:
