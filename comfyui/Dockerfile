@@ -2,11 +2,11 @@
 FROM pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime
 
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
-RUN apt-get update && apt-get install -y --no-install-recommends git libgl1 libglib2.0-0 \
+RUN apt-get update && apt-get install -y --no-install-recommends git build-essential libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Pin a ComfyUI release with: docker compose build --build-arg COMFYUI_REF=v0.x.y comfyui
-ARG COMFYUI_REF=master
+ARG COMFYUI_REF=v0.42.1
 RUN git clone https://github.com/comfyanonymous/ComfyUI /opt/ComfyUI \
     && cd /opt/ComfyUI && git checkout "$COMFYUI_REF" \
     && pip install -r requirements.txt \

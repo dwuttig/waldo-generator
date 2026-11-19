@@ -12,7 +12,9 @@ import threading
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from urllib.parse import urlparse
+
+from pydantic import BaseModel, Field, model_validator
 
 ProviderName = Literal["fal", "google", "comfyui", "mock"]
 StepName = Literal["character", "scene", "place", "detail", "upscale"]
@@ -90,6 +92,17 @@ MODEL_PRESETS: dict[str, dict[str, list[str]]] = {
 }
 
 
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0"}
+
+
+def _is_local_or_empty(url: str) -> bool:
+    url = (url or "").strip()
+    if not url:
+        return True
+    host = urlparse(url if "://" in url else "http://" + url).hostname or ""
+    return host.lower() in LOCAL_HOSTS
+
+
 class SceneDefaults(BaseModel):
     aspect_ratio: Literal["1:1", "3:2", "2:3", "4:3", "3:4", "16:9", "9:16"] = "3:2"
     # Side of the square patch redrawn around each hidden person, as a fraction
@@ -114,8 +127,24 @@ class Settings(BaseModel):
     steps: dict[str, StepConfig] = Field(default_factory=_default_steps)
     scene: SceneDefaults = Field(default_factory=SceneDefaults)
 
+    @model_validator(mode="after")
+    def _prefer_env_comfyui_url(self) -> "Settings":
+        # A URL saved by a run outside Docker (empty or localhost) cannot reach
+        # ComfyUI from inside a container, so the deployment's COMFYUI_URL wins.
+        env_url = os.environ.get("COMFYUI_URL", "").strip()
+        if env_url and _is_local_or_empty(self.comfyui_url):
+            self.comfyui_url = env_url
+        return self
+
     def step(self, name: StepName) -> StepConfig:
-        return self.steps.get(name) or _default_steps()[name]
+        cfg = self.steps.get(name)
+        if cfg is None:
+            return _default_steps()[name]
+        if cfg.provider == "comfyui" and not cfg.model.strip():
+            # No model chosen: use the bundled workflow of the current profile.
+            default = _default_steps()[name]
+            return cfg.model_copy(update={"model": default.model, "resolution": default.resolution})
+        return cfg
 
     def key_for(self, provider: str) -> str:
         if provider == "fal":
