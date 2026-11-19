@@ -7,6 +7,14 @@ import io
 
 from PIL import Image, ImageDraw, ImageFilter, ImageOps
 
+try:  # HEIC/HEIF photos from iPhones
+    from pillow_heif import register_heif_opener
+
+    register_heif_opener()
+    HEIF_SUPPORT = True
+except ImportError:  # pragma: no cover
+    HEIF_SUPPORT = False
+
 RES_PX = {"1K": 1024, "2K": 2048, "4K": 4096}
 
 

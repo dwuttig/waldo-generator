@@ -153,3 +153,19 @@ def test_password_protection(tmp_path, monkeypatch):
     assert client.get("/healthz").status_code == 200
     assert client.get("/api/people", auth=("family", "pw")).status_code == 200
     assert client.get("/api/people", auth=("family", "nope")).status_code == 401
+
+
+def test_heic_upload(tmp_path):
+    import pillow_heif
+
+    heif = pillow_heif.from_pillow(Image.new("RGB", (80, 60), (200, 100, 50)))
+    buf = io.BytesIO()
+    heif.save(buf, quality=90)
+    client = TestClient(create_app(tmp_path))
+    pid = client.post("/api/people", json={"name": "Ben"}).json()["id"]
+    r = client.post(f"/api/people/{pid}/photos", files=[("files", ("IMG_0001.HEIC", buf.getvalue(), "image/heic"))])
+    assert r.status_code == 200, r.text
+    photo = r.json()["photos"][0]
+    assert photo.endswith(".jpg")
+    img = Image.open(client.app.state.store.person_dir(pid) / photo)
+    assert img.size == (80, 60)

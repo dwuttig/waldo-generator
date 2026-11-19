@@ -76,6 +76,8 @@ function renderPeople() {
     $(".photo-input", el).onchange = async (e) => {
       const fd = new FormData();
       for (const f of e.target.files) fd.append("files", f);
+      const label = $(".upload", el);
+      label.firstChild.textContent = "Uploading… ";
       try { await api(`/api/people/${p.id}/photos`, { method: "POST", body: fd }); }
       catch (err) { alert(err.message); }
       loadPeople();

@@ -80,6 +80,7 @@ Data (photos, characters, scenes) is stored in `./data` (change with `--data` or
 
 ## Tips
 
+- JPEG, PNG, WebP and iPhone HEIC/HEIF photos all work (they are stored as JPEG).
 - Clear, well-lit photos with the face visible give the best likeness; add a full-body photo for proportions.
 - A smaller *hidden person patch size* makes people smaller and harder to find.
 - More *detail tiles* means sharper backgrounds but more cost; if tiles show seams, try the
