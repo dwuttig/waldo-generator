@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import math
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
@@ -51,6 +51,7 @@ class Entry:
     sheet: Image.Image
     x: float | None = None  # normalised 0..1 or None for random
     y: float | None = None
+    extra_refs: list[Image.Image] = field(default_factory=list)  # more views of the same character
 
 
 def choose_spots(entries: list[Entry], w: int, h: int, patch: int, rng: random.Random) -> list[tuple[int, int]]:
@@ -126,7 +127,7 @@ def place_people(settings: Settings, base: Image.Image, entries: list[Entry], rn
         box = (cx - patch // 2, cy - patch // 2, cx - patch // 2 + patch, cy - patch // 2 + patch)
         crop = img.crop(box)
         edited = provider.edit(prompts.place(settings.style_prompt, e.name), model=step.model,
-                               image=crop, refs=[e.sheet], resolution=step.resolution, aspect_ratio="1:1")
+                               image=crop, refs=[e.sheet, *e.extra_refs], resolution=step.resolution, aspect_ratio="1:1")
         edited = edited.resize((patch, patch), Image.LANCZOS)
         img.paste(edited, box[:2], mask)
         found.append({"person_id": e.person_id, "name": e.name, "x": cx / w, "y": cy / h,

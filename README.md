@@ -10,6 +10,9 @@ It does not copy any existing book or character.
 
 1. **Family**: add a person, upload 1 to 3 photos, click *Make cartoon versions*.
    The app draws several variations (optionally with an outfit you type); pick the one to use.
+   Already have cartoon images of someone? Use *Upload ready-made characters* instead of
+   photos. They are used as-is; if you upload several (e.g. front and side view), all of
+   them are sent as references when that person is hidden in a scene.
 2. **Scene**: describe the place ("a snowy Christmas market with an ice rink"), tick who to
    hide, optionally click a rough spot for each person, and generate.
 3. The pipeline then:

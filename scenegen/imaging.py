@@ -21,6 +21,16 @@ RES_PX = {"1K": 1024, "2K": 2048, "4K": 4096}
 def load(data: bytes) -> Image.Image:
     img = Image.open(io.BytesIO(data))
     img = ImageOps.exif_transpose(img)
+    return flatten(img)
+
+
+def flatten(img: Image.Image) -> Image.Image:
+    """RGB copy; transparent areas (e.g. cut-out character PNGs) become white."""
+    if img.mode in ("RGBA", "LA", "PA") or (img.mode == "P" and "transparency" in img.info):
+        rgba = img.convert("RGBA")
+        bg = Image.new("RGB", rgba.size, (255, 255, 255))
+        bg.paste(rgba, mask=rgba.getchannel("A"))
+        return bg
     return img.convert("RGB")
 
 

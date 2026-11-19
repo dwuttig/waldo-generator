@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import hmac
+import io
 import logging
 import os
 import threading
@@ -14,6 +15,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
+from PIL import Image, ImageOps
 from pydantic import BaseModel
 
 from .config import MODEL_PRESETS, SettingsStore
@@ -177,6 +179,27 @@ def create_app(data_dir: Path | str | None = None, workers: int = 2) -> FastAPI:
         pool.submit(work)
         return jobs[job_id]
 
+    @app.post("/api/people/{pid}/assets")
+    async def upload_assets(pid: str, files: list[UploadFile] = File(...)):
+        """Ready-made cartoon images of this person, used as-is instead of generated ones."""
+        p = _person(pid)
+        had_chosen = any(s.chosen for s in p.sheets)
+        for f in files:
+            data = await f.read()
+            try:
+                img = Image.open(io.BytesIO(data))
+                img.load()
+            except Exception:
+                raise HTTPException(400, f"{f.filename} is not an image")
+            img = ImageOps.exif_transpose(img)
+            if img.mode not in ("RGB", "RGBA"):
+                img = img.convert("RGBA")
+            sheet = store.add_sheet(p, img, "", source="uploaded")
+            if not had_chosen:
+                sheet.chosen, had_chosen = True, True
+        store.save_person(p)
+        return dump(p)
+
     @app.post("/api/people/{pid}/sheets/{sid}/choose")
     def choose_sheet(pid: str, sid: str):
         p = _person(pid)
@@ -237,7 +260,8 @@ def create_app(data_dir: Path | str | None = None, workers: int = 2) -> FastAPI:
             if not sheet:
                 raise HTTPException(400, f"{p.name} has no cartoon character yet")
             pl.sheet_id = sheet.id
-            entries.append(Entry(p.id, p.name, store.person_image(p.id, sheet.file), pl.x, pl.y))
+            refs = [store.person_image(p.id, s.file) for s in p.reference_sheets(sheet)]
+            entries.append(Entry(p.id, p.name, refs[0], pl.x, pl.y, extra_refs=refs[1:]))
         scene = Scene(id=new_id(), description=body.description.strip(), placements=body.placements,
                       estimated_cost=estimate_cost(settings, len(entries), body.aspect_ratio)["total"])
         store.save_scene(scene)

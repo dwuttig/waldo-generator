@@ -22,6 +22,7 @@ class Sheet(BaseModel):
     file: str
     outfit: str = ""
     chosen: bool = False
+    source: str = "generated"  # generated | uploaded
 
 
 class Person(BaseModel):
@@ -32,6 +33,11 @@ class Person(BaseModel):
 
     def chosen_sheet(self) -> Sheet | None:
         return next((s for s in self.sheets if s.chosen), None) or (self.sheets[0] if self.sheets else None)
+
+    def reference_sheets(self, main: Sheet, limit: int = 3) -> list[Sheet]:
+        """`main` first, then other uploaded assets (extra views of the same character)."""
+        extra = [s for s in self.sheets if s.source == "uploaded" and s.id != main.id]
+        return [main] + extra[: limit - 1]
 
 
 class Placement(BaseModel):
@@ -108,18 +114,19 @@ class Store:
         person.photos.append(name)
         return name
 
-    def add_sheet(self, person: Person, img: Image.Image, outfit: str) -> Sheet:
+    def add_sheet(self, person: Person, img: Image.Image, outfit: str, source: str = "generated") -> Sheet:
         sid = new_id()
         name = f"sheets/{sid}.png"
         path = self.person_dir(person.id) / name
         path.parent.mkdir(parents=True, exist_ok=True)
         img.save(path, "PNG")
-        sheet = Sheet(id=sid, file=name, outfit=outfit)
+        sheet = Sheet(id=sid, file=name, outfit=outfit, source=source)
         person.sheets.append(sheet)
         return sheet
 
     def person_image(self, pid: str, rel: str) -> Image.Image:
-        return Image.open(self.person_dir(pid) / rel).convert("RGB")
+        from .imaging import flatten
+        return flatten(Image.open(self.person_dir(pid) / rel))
 
     # scenes -----------------------------------------------------------------
     def scene_dir(self, sid: str) -> Path:

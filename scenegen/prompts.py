@@ -32,7 +32,8 @@ def scene(style: str, description: str) -> str:
 def place(style: str, name: str) -> str:
     return (
         "This image is a small section of a large crowded illustration. "
-        "Add exactly one more person to it: the cartoon character shown in the second image. "
+        "Add exactly one more person to it: the cartoon character shown in the other image(s) "
+        "(if there are several, they all show the same character from different angles). "
         "Place them near the centre of this section, at the same small size as the surrounding "
         "people, naturally doing something that fits the scene, partly blending into the crowd. "
         "Keep their face, hair and outfit consistent with the reference. "

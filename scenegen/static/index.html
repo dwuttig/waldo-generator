@@ -20,7 +20,7 @@
   <!-- FAMILY -->
   <section id="tab-family" class="tab active">
     <p class="hint">Add each family member, upload 1 to 3 clear photos (face visible, ideally one full-body),
-      then make cartoon versions and pick the one you like.</p>
+      then make cartoon versions and pick the one you like. Or upload ready-made cartoon images instead.</p>
     <form id="add-person" class="row">
       <input name="name" placeholder="Name, e.g. Oma Ilse" required>
       <button type="submit">Add person</button>
@@ -121,6 +121,8 @@
       <button class="make-chars">Make cartoon versions</button>
     </div>
     <div class="progress hidden"><div class="bar"></div><span class="msg"></span></div>
+    <label class="upload asset-upload">Upload ready-made characters <input type="file" accept="image/*,.heic,.heif" multiple class="asset-input"></label>
+    <small>Already have cartoon images of this person? Upload them here instead of photos (PNG with a transparent or plain background works best). Several images of the same character are all used as references.</small>
     <div class="thumbs sheets"></div>
   </div>
 </template>

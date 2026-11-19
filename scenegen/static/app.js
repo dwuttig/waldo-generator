@@ -61,6 +61,7 @@ function renderPeople() {
       const t = document.createElement("div");
       t.className = "thumb" + (s.id === chosenId ? " chosen" : "");
       t.title = s.outfit || "";
+      if (s.source === "uploaded") t.classList.add("uploaded");
       t.innerHTML = `<img alt=""><div class="bar-actions"><button class="small use">${s.id === chosenId ? "✓ In use" : "Use this"}</button><button class="small danger">✕</button></div>`;
       $("img", t).src = `/files/people/${p.id}/${s.file}`;
       $("img", t).onclick = () => window.open(`/files/people/${p.id}/${s.file}`, "_blank");
@@ -79,6 +80,14 @@ function renderPeople() {
       const label = $(".upload", el);
       label.firstChild.textContent = "Uploading… ";
       try { await api(`/api/people/${p.id}/photos`, { method: "POST", body: fd }); }
+      catch (err) { alert(err.message); }
+      loadPeople();
+    };
+    $(".asset-input", el).onchange = async (e) => {
+      const fd = new FormData();
+      for (const f of e.target.files) fd.append("files", f);
+      $(".asset-upload", el).firstChild.textContent = "Uploading… ";
+      try { await api(`/api/people/${p.id}/assets`, { method: "POST", body: fd }); }
       catch (err) { alert(err.message); }
       loadPeople();
     };

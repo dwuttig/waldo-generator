@@ -169,3 +169,38 @@ def test_heic_upload(tmp_path):
     assert photo.endswith(".jpg")
     img = Image.open(client.app.state.store.person_dir(pid) / photo)
     assert img.size == (80, 60)
+
+
+def test_uploaded_assets_used_as_references(tmp_path, monkeypatch):
+    client = TestClient(create_app(tmp_path))
+    s = client.get("/api/settings").json()
+    for step in s["steps"].values():
+        step.update(provider="mock", model="mock", resolution="1K")
+    s["scene"]["detail_enabled"] = False
+    client.put("/api/settings", json=s)
+
+    pid = client.post("/api/people", json={"name": "Lea"}).json()["id"]
+    buf = io.BytesIO()
+    Image.new("RGBA", (40, 60), (0, 0, 0, 0)).save(buf, "PNG")  # transparent cut-out
+    files = [("files", (f"lea{i}.png", buf.getvalue(), "image/png")) for i in range(3)]
+    person = client.post(f"/api/people/{pid}/assets", files=files).json()
+    assert [sh["source"] for sh in person["sheets"]] == ["uploaded"] * 3
+    assert sum(sh["chosen"] for sh in person["sheets"]) == 1
+    assert person["photos"] == []
+
+    seen = []
+    from scenegen.providers.mock import MockProvider
+    orig = MockProvider.edit
+
+    def spy(self, prompt, **kw):
+        seen.append(kw.get("refs") or [])
+        return orig(self, prompt, **kw)
+
+    monkeypatch.setattr(MockProvider, "edit", spy)
+    scene = client.post("/api/scenes", json={"description": "park", "placements": [{"person_id": pid}]}).json()
+    done = _wait(lambda: (lambda d: d if d["status"] in ("done", "error") else None)(
+        client.get(f"/api/scenes/{scene['id']}").json()))
+    assert done["status"] == "done", done["error"]
+    assert len(seen[0]) == 3
+    # transparency is flattened to white, not black
+    assert seen[0][0].getpixel((0, 0)) == (255, 255, 255)
