@@ -144,3 +144,12 @@ def test_app_end_to_end(tmp_path):
     assert client.get(f"/files/scenes/{scene['id']}/{done['files']['preview']}").status_code == 200
     assert client.get(f"/files/scenes/{scene['id']}/../settings.json").status_code == 404
     assert client.get("/").status_code == 200
+
+
+def test_password_protection(tmp_path, monkeypatch):
+    monkeypatch.setenv("SCENEGEN_PASSWORD", "pw")
+    client = TestClient(create_app(tmp_path))
+    assert client.get("/api/people").status_code == 401
+    assert client.get("/healthz").status_code == 200
+    assert client.get("/api/people", auth=("family", "pw")).status_code == 200
+    assert client.get("/api/people", auth=("family", "nope")).status_code == 401

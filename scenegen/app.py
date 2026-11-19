@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import hmac
 import logging
 import os
 import threading
@@ -9,8 +11,8 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -49,6 +51,23 @@ def create_app(data_dir: Path | str | None = None, workers: int = 2) -> FastAPI:
 
     app = FastAPI(title="Family hidden-object scene generator")
     app.state.store = store
+
+    password = os.environ.get("SCENEGEN_PASSWORD", "")
+    username = os.environ.get("SCENEGEN_USER", "family")
+    if password:
+        expected = "Basic " + base64.b64encode(f"{username}:{password}".encode()).decode()
+
+        @app.middleware("http")
+        async def basic_auth(request: Request, call_next):
+            if request.url.path == "/healthz" or hmac.compare_digest(
+                    request.headers.get("authorization", "").encode(), expected.encode()):
+                return await call_next(request)
+            return Response("Login required", status_code=401,
+                            headers={"WWW-Authenticate": 'Basic realm="Hidden Family"'})
+
+    @app.get("/healthz")
+    def healthz():
+        return {"ok": True}
     app.state.pool = pool
 
     def _person(pid: str) -> Person:

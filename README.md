@@ -47,7 +47,26 @@ Export each workflow in API format and put these placeholders into node inputs:
 `{{IMAGE}}` (main input image) and `{{REF_1}}`, `{{REF_2}}`… (reference images).
 Set the three workflow paths (generate, edit, upscale) in Settings.
 
-## Run it
+## Run it with Docker (recommended)
+
+```bash
+cp .env.example .env      # optional: add FAL_KEY / GEMINI_API_KEY / SCENEGEN_PASSWORD
+docker compose up -d --build
+```
+
+Open http://localhost:8000. Photos, characters, scenes and settings live in the
+`scenegen-data` Docker volume, so they survive restarts and image updates.
+
+- **Other devices on your network** (phone, tablet): change the port line in
+  `docker-compose.yml` to `"8000:8000"` and set `SCENEGEN_PASSWORD` in `.env`, then open
+  `http://<your-computer>:8000` and log in as `family` (or `SCENEGEN_USER`).
+- **On the internet**: put it behind a reverse proxy with HTTPS (Caddy, Traefik, nginx) and
+  always set `SCENEGEN_PASSWORD`; generating images spends money on your API key.
+- **Local ComfyUI on the same machine**: use `http://host.docker.internal:8188` as the ComfyUI URL.
+- **Update**: `git pull && docker compose up -d --build`.
+- **Backup**: `docker run --rm -v waldo-generator_scenegen-data:/data -v "$PWD":/out alpine tar czf /out/backup.tgz -C /data .`
+
+## Run it without Docker
 
 ```bash
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
@@ -57,7 +76,7 @@ python -m scenegen        # opens on http://127.0.0.1:8000
 ```
 
 Data (photos, characters, scenes) is stored in `./data` (change with `--data` or
-`SCENEGEN_DATA`). The app has no login, so it only listens on localhost by default.
+`SCENEGEN_DATA`). It only listens on localhost by default; set `SCENEGEN_PASSWORD` to require a login.
 
 ## Tips
 
