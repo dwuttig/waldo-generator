@@ -85,6 +85,17 @@ You need Docker with NVIDIA GPU support. On Windows that is Docker Desktop with 
 backend and a current NVIDIA driver; check it with
 `docker run --rm --gpus all nvidia/cuda:12.8.0-base-ubuntu24.04 nvidia-smi`.
 
+**Windows memory limit:** Docker Desktop's WSL 2 VM gets only half of your RAM by default,
+which is tight for ComfyUI. Create `%UserProfile%\.wslconfig` with
+
+```ini
+[wsl2]
+memory=24GB
+swap=16GB
+```
+
+then run `wsl --shutdown` and restart Docker Desktop (example for a 32 GB PC).
+
 ```bash
 cp .env.example .env      # optional
 docker compose up -d --build
